@@ -1,80 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>NXO Online Users</title>
-    <style>
-        body {
-            background-color: #0f0f0f;
-            color: white;
-            font-family: monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 40px;
-        }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NXO Online Users</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
 
-        h1 {
-            margin-bottom: 20px;
-            font-size: 2em;
-            color: #00ff99;
-        }
+  body {
+    margin: 0;
+    background: #0a0f1e;
+    color: #a0c8ff;
+    font-family: 'Fira Code', monospace, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem 1rem 3rem;
+  }
 
-        #user-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 10px;
-            max-width: 800px;
-            width: 100%;
-        }
+  h1 {
+    color: #63a0ff;
+    font-weight: 700;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 8px #2e62ff80;
+  }
 
-        .user-card {
-            background-color: #1a1a1a;
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid #00ff99;
-            box-shadow: 0 0 10px rgba(0,255,150,0.1);
-            text-align: center;
-            transition: 0.2s;
-        }
+  #user-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    max-width: 900px;
+    width: 100%;
+  }
 
-        .user-card:hover {
-            transform: scale(1.03);
-            box-shadow: 0 0 15px rgba(0,255,150,0.2);
-        }
+  .user-card {
+    background: linear-gradient(145deg, #112244, #0b183a);
+    border: 1px solid #2f65ffcc;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 0 12px #2f65ff80;
+    text-align: center;
+    color: #c6d9ff;
+    cursor: default;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
 
-        .code {
-            font-size: 0.9em;
-            color: #999;
-        }
-    </style>
+  .user-card:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 25px #3f7effcc;
+  }
+
+  .user-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.03em;
+  }
+
+  .user-code {
+    font-size: 0.9rem;
+    color: #7f9fffcc;
+    font-style: italic;
+  }
+
+  /* subtle pulse animation on refresh */
+  #user-list.refreshing .user-card {
+    animation: pulseGlow 1.4s ease infinite alternate;
+  }
+
+  @keyframes pulseGlow {
+    from {
+      box-shadow: 0 0 12px #2f65ff80;
+    }
+    to {
+      box-shadow: 0 0 22px #a0c4ffcc;
+    }
+  }
+
+  /* responsive tweaks */
+  @media (max-width: 480px) {
+    h1 {
+      font-size: 2rem;
+    }
+
+    #user-list {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .user-card {
+      padding: 0.8rem 1rem;
+    }
+  }
+</style>
 </head>
 <body>
-    <h1>Online Users</h1>
-    <div id="user-list"></div>
+  <h1>NXO Online Users</h1>
+  <div id="user-list"></div>
 
-    <script>
-        async function fetchUsers() {
-            const res = await fetch('/api/list');
-            const users = await res.json();
+  <script>
+    const userList = document.getElementById('user-list');
 
-            const list = document.getElementById('user-list');
-            list.innerHTML = '';
+    async function fetchUsers() {
+      userList.classList.add('refreshing');
 
-            users.forEach(user => {
-                const div = document.createElement('div');
-                div.className = 'user-card';
-                div.innerHTML = `
-                    <strong>${user.name}</strong><br>
-                    <span class="code">Room: ${user.code}</span>
-                `;
-                list.appendChild(div);
-            });
+      try {
+        const res = await fetch('/api/list');
+        if (!res.ok) throw new Error('Network response not ok');
+        const users = await res.json();
+
+        userList.innerHTML = '';
+
+        if (users.length === 0) {
+          userList.innerHTML = `<div class="user-card"><em>No users online</em></div>`;
+        } else {
+          users.forEach(user => {
+            const card = document.createElement('div');
+            card.className = 'user-card';
+            card.innerHTML = `
+              <div class="user-name">${escapeHtml(user.name)}</div>
+              <div class="user-code">Room: ${escapeHtml(user.code)}</div>
+            `;
+            userList.appendChild(card);
+          });
         }
+      } catch (e) {
+        userList.innerHTML = `<div class="user-card"><em>Error loading users</em></div>`;
+        console.error('Failed to fetch users:', e);
+      } finally {
+        setTimeout(() => userList.classList.remove('refreshing'), 1400);
+      }
+    }
 
-        // auto refresh every 5 sec
-        fetchUsers();
-        setInterval(fetchUsers, 5000);
-    </script>
+    // escape to prevent HTML injection
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    fetchUsers();
+    setInterval(fetchUsers, 5000);
+  </script>
 </body>
 </html>
