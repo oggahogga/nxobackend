@@ -35,7 +35,7 @@ app.get('/api/ping', (req, res) => {
 setInterval(() => {
     const now = Date.now();
     activeList = activeList.filter(e => now - e.lastSeen < 10000);
-}, 5000);
+}, 1000);
 
 app.get('/api/list', (req, res) => {
     res.json(activeList.map(({ code, name }) => ({ code, name })));
