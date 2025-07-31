@@ -1,14 +1,13 @@
 const express = require('express');
 const path = require('path');
-const app = express(); // ← this needs to come BEFORE using app
+const app = express();
 
 const PORT = process.env.PORT || 3000;
 
+app.use(express.static(path.join(__dirname, 'public'))); // serves public folder
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-// static files serving
-app.use(express.static(path.join(__dirname, 'public'))); // serve stuff from 'public' folder
 
 // your existing API endpoints here
 let activeList = [];
