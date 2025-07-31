@@ -5,26 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>NXO Online Users</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
 
   body {
     margin: 0;
-    background: #0a0f1e;
-    color: #a0c8ff;
-    font-family: 'Fira Code', monospace, monospace;
+    background: #000814; /* deep black-blue */
+    color: #a8c0ff; /* soft light blue */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+      Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
     min-height: 100vh;
-    padding: 2rem 1rem 3rem;
+    padding: 3rem 1rem 4rem;
+    user-select: none;
   }
 
   h1 {
-    color: #63a0ff;
+    margin: 0;
     font-weight: 700;
-    font-size: 3rem;
-    margin-bottom: 1rem;
-    text-shadow: 0 0 8px #2e62ff80;
+    font-size: 3.2rem;
+    color: #0050ff; /* bright pure blue */
+    letter-spacing: -0.03em;
+  }
+
+  #count {
+    margin: 0.8rem 0 1.2rem;
+    font-weight: 500;
+    font-size: 1.3rem;
+    color: #7a93ff;
+    letter-spacing: 0.05em;
+  }
+
+  hr {
+    width: 80px;
+    border: none;
+    border-bottom: 1px solid #1c2dff;
+    margin-bottom: 2rem;
+    opacity: 0.4;
   }
 
   #user-list {
@@ -36,53 +54,39 @@
   }
 
   .user-card {
-    background: linear-gradient(145deg, #112244, #0b183a);
-    border: 1px solid #2f65ffcc;
-    border-radius: 12px;
-    padding: 1rem 1.5rem;
-    box-shadow: 0 0 12px #2f65ff80;
+    background: #001141; /* solid deep blue */
+    border-radius: 10px;
+    padding: 1rem 1.4rem;
+    color: #d0dcff;
+    box-shadow: inset 0 0 5px #002a8f;
     text-align: center;
-    color: #c6d9ff;
+    font-weight: 600;
+    font-size: 1.1rem;
     cursor: default;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    transition: background-color 0.2s ease;
   }
 
   .user-card:hover {
-    transform: scale(1.06);
-    box-shadow: 0 0 25px #3f7effcc;
-  }
-
-  .user-name {
-    font-size: 1.3rem;
-    font-weight: 700;
-    margin-bottom: 0.4rem;
-    letter-spacing: 0.03em;
+    background-color: #002071;
   }
 
   .user-code {
-    font-size: 0.9rem;
-    color: #7f9fffcc;
+    margin-top: 0.35rem;
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: #7c92d9;
     font-style: italic;
+    letter-spacing: 0.03em;
   }
 
-  /* subtle pulse animation on refresh */
-  #user-list.refreshing .user-card {
-    animation: pulseGlow 1.4s ease infinite alternate;
-  }
-
-  @keyframes pulseGlow {
-    from {
-      box-shadow: 0 0 12px #2f65ff80;
-    }
-    to {
-      box-shadow: 0 0 22px #a0c4ffcc;
-    }
-  }
-
-  /* responsive tweaks */
+  /* mobile tweaks */
   @media (max-width: 480px) {
     h1 {
-      font-size: 2rem;
+      font-size: 2.4rem;
+    }
+
+    #count {
+      font-size: 1rem;
     }
 
     #user-list {
@@ -91,25 +95,29 @@
     }
 
     .user-card {
-      padding: 0.8rem 1rem;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
     }
   }
 </style>
 </head>
 <body>
   <h1>NXO Online Users</h1>
+  <div id="count">Loading...</div>
+  <hr />
   <div id="user-list"></div>
 
   <script>
     const userList = document.getElementById('user-list');
+    const countElem = document.getElementById('count');
 
     async function fetchUsers() {
-      userList.classList.add('refreshing');
-
       try {
         const res = await fetch('/api/list');
         if (!res.ok) throw new Error('Network response not ok');
         const users = await res.json();
+
+        countElem.textContent = `Current Count: ${users.length}`;
 
         userList.innerHTML = '';
 
@@ -120,21 +128,19 @@
             const card = document.createElement('div');
             card.className = 'user-card';
             card.innerHTML = `
-              <div class="user-name">${escapeHtml(user.name)}</div>
+              <div>${escapeHtml(user.name)}</div>
               <div class="user-code">Room: ${escapeHtml(user.code)}</div>
             `;
             userList.appendChild(card);
           });
         }
       } catch (e) {
+        countElem.textContent = 'Failed to load users';
         userList.innerHTML = `<div class="user-card"><em>Error loading users</em></div>`;
         console.error('Failed to fetch users:', e);
-      } finally {
-        setTimeout(() => userList.classList.remove('refreshing'), 1400);
       }
     }
 
-    // escape to prevent HTML injection
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
