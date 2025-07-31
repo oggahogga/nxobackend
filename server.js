@@ -1,23 +1,22 @@
 const express = require('express');
 const path = require('path');
-app.use(express.static(path.join(__dirname)));
+const app = express(); // ← this needs to come BEFORE using app
 
-const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// static files serving
+app.use(express.static(path.join(__dirname, 'public'))); // serve stuff from 'public' folder
+
+// your existing API endpoints here
 let activeList = [];
 
 app.post('/api/register', (req, res) => {
     const { code, name } = req.body;
     if (!code || !name) return res.status(400).send("missing stuff");
 
-    // remove same name from other codes so a user only exists once
-    activeList = activeList.filter(e => e.name !== name || e.code === code);
-
-    // check if this exact code + name is already in
     let found = activeList.find(e => e.code === code && e.name === name);
     if (!found) {
         activeList.push({ code, name, lastSeen: Date.now() });
@@ -34,7 +33,6 @@ app.get('/api/ping', (req, res) => {
     res.sendStatus(200);
 });
 
-// auto-remove users who haven't pinged in 10s
 setInterval(() => {
     const now = Date.now();
     activeList = activeList.filter(e => now - e.lastSeen < 10000);
