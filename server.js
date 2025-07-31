@@ -16,14 +16,23 @@ app.post('/api/register', (req, res) => {
     const { code, name } = req.body;
     if (!code || !name) return res.status(400).send("missing stuff");
 
-    let found = activeList.find(e => e.code === code && e.name === name);
-    if (!found) {
+    let player = activeList.find(e => e.name === name);
+    if (!player) {
+        // new player
         activeList.push({ code, name, lastSeen: Date.now() });
-        console.log(`added: ${code} - ${name}`);
+        console.log(`added new player: ${code} - ${name}`);
+    } else {
+        // existing player: update code if different, always update lastSeen
+        if (player.code !== code) {
+            console.log(`updated player room: ${name} from ${player.code} to ${code}`);
+            player.code = code;
+        }
+        player.lastSeen = Date.now();
     }
 
     res.sendStatus(200);
 });
+
 
 app.get('/api/ping', (req, res) => {
     const { code, name } = req.query;
@@ -34,7 +43,7 @@ app.get('/api/ping', (req, res) => {
 
 setInterval(() => {
     const now = Date.now();
-    activeList = activeList.filter(e => now - e.lastSeen < 1000);
+    activeList = activeList.filter(e => now - e.lastSeen < 3000);
 }, 1000);
 
 app.get('/api/list', (req, res) => {
