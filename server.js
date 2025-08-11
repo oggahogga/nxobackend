@@ -4,8 +4,7 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static(path.join(__dirname, 'public'))); // serve static files from /public
-
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -15,16 +14,26 @@ app.post('/api/register', (req, res) => {
   const { code, name } = req.body;
   if (!code || !name) return res.status(400).send("missing stuff");
 
-  let player = activeList.find(e => e.name === name);
   const now = Date.now();
+  let player = activeList.find(e => e.name === name);
 
   if (!player) {
-    // new player, add with initial ping
-    activeList.push({ code, name, lastSeen: now, pings: [now] });
+    activeList.push({ 
+      code, 
+      name, 
+      lastSeen: now, 
+      pings: [now], 
+      codeChanges: [] // new field to track code changes
+    });
     console.log(`added new player: ${code} - ${name}`);
   } else {
-    // existing player: update code if different, update lastSeen and add ping
+    // track room code changes
     if (player.code !== code) {
+      player.codeChanges.push({
+        from: player.code,
+        to: code,
+        timestamp: now,
+      });
       console.log(`updated player room: ${name} from ${player.code} to ${code}`);
       player.code = code;
     }
@@ -46,22 +55,27 @@ app.get('/api/ping', (req, res) => {
   res.sendStatus(200);
 });
 
-// endpoint to get ping history for a player by name
-app.get('/api/pings', (req, res) => {
+// endpoint to get full player history (pings + code changes)
+app.get('/api/history', (req, res) => {
   const { name } = req.query;
   if (!name) return res.status(400).send("missing name");
-  const found = activeList.find(e => e.name === name);
-  if (!found) return res.status(404).send("player not found");
-  res.json(found.pings);
+
+  const player = activeList.find(e => e.name === name);
+  if (!player) return res.status(404).send("player not found");
+
+  // send both pings and codeChanges
+  res.json({
+    pings: player.pings,
+    codeChanges: player.codeChanges,
+    currentCode: player.code,
+  });
 });
 
-// cleanup inactive players older than 3 seconds
 setInterval(() => {
   const now = Date.now();
   activeList = activeList.filter(e => now - e.lastSeen < 3000);
 }, 1000);
 
-// send active users list without ping info
 app.get('/api/list', (req, res) => {
   res.json(activeList.map(({ code, name }) => ({ code, name })));
 });
