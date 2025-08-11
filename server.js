@@ -4,50 +4,68 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static(path.join(__dirname, 'public'))); // serves public folder
+app.use(express.static(path.join(__dirname, 'public'))); // serve static files from /public
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// your existing API endpoints here
 let activeList = [];
 
 app.post('/api/register', (req, res) => {
-    const { code, name } = req.body;
-    if (!code || !name) return res.status(400).send("missing stuff");
+  const { code, name } = req.body;
+  if (!code || !name) return res.status(400).send("missing stuff");
 
-    let player = activeList.find(e => e.name === name);
-    if (!player) {
-        // new player
-        activeList.push({ code, name, lastSeen: Date.now() });
-        console.log(`added new player: ${code} - ${name}`);
-    } else {
-        // existing player: update code if different, always update lastSeen
-        if (player.code !== code) {
-            console.log(`updated player room: ${name} from ${player.code} to ${code}`);
-            player.code = code;
-        }
-        player.lastSeen = Date.now();
+  let player = activeList.find(e => e.name === name);
+  const now = Date.now();
+
+  if (!player) {
+    // new player, add with initial ping
+    activeList.push({ code, name, lastSeen: now, pings: [now] });
+    console.log(`added new player: ${code} - ${name}`);
+  } else {
+    // existing player: update code if different, update lastSeen and add ping
+    if (player.code !== code) {
+      console.log(`updated player room: ${name} from ${player.code} to ${code}`);
+      player.code = code;
     }
+    player.lastSeen = now;
+    player.pings.push(now);
+  }
 
-    res.sendStatus(200);
+  res.sendStatus(200);
 });
-
 
 app.get('/api/ping', (req, res) => {
-    const { code, name } = req.query;
-    const found = activeList.find(e => e.code === code && e.name === name);
-    if (found) found.lastSeen = Date.now();
-    res.sendStatus(200);
+  const { code, name } = req.query;
+  const found = activeList.find(e => e.code === code && e.name === name);
+  if (found) {
+    const now = Date.now();
+    found.lastSeen = now;
+    found.pings.push(now);
+  }
+  res.sendStatus(200);
 });
 
+// endpoint to get ping history for a player by name
+app.get('/api/pings', (req, res) => {
+  const { name } = req.query;
+  if (!name) return res.status(400).send("missing name");
+  const found = activeList.find(e => e.name === name);
+  if (!found) return res.status(404).send("player not found");
+  res.json(found.pings);
+});
+
+// cleanup inactive players older than 3 seconds
 setInterval(() => {
-    const now = Date.now();
-    activeList = activeList.filter(e => now - e.lastSeen < 3000);
+  const now = Date.now();
+  activeList = activeList.filter(e => now - e.lastSeen < 3000);
 }, 1000);
 
+// send active users list without ping info
 app.get('/api/list', (req, res) => {
-    res.json(activeList.map(({ code, name }) => ({ code, name })));
+  res.json(activeList.map(({ code, name }) => ({ code, name })));
 });
 
-app.listen(PORT, () => console.log(`server live on ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`server listening on port ${PORT}`);
+});
