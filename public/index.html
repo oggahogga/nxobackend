@@ -103,78 +103,148 @@
   <hr />
   <div id="user-list"></div>
 
-  <script>
-    const userList = document.getElementById('user-list');
-    const countElem = document.getElementById('count');
+<script>
+  const userList = document.getElementById('user-list');
+  const countElem = document.getElementById('count');
 
-    async function fetchUsers() {
-      try {
-        const res = await fetch('/api/list');
-        if (!res.ok) throw new Error('Network response not ok');
-        const users = await res.json();
+  // create modal elements once
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  `;
 
-        countElem.textContent = `Current Count: ${users.length}`;
-        userList.innerHTML = '';
+  const modalContent = document.createElement('div');
+  modalContent.style.cssText = `
+    background: #001141;
+    color: #a8c0ff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 450px;
+    max-height: 70vh;
+    overflow-y: auto;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 0 20px #0050ff;
+    white-space: pre-wrap;
+  `;
 
-        if (users.length === 0) {
-          userList.innerHTML = `<div class="user-card"><em>No users online</em></div>`;
-        } else {
-          users.forEach(user => {
-            const card = document.createElement('div');
-            card.className = 'user-card';
-            card.innerHTML = `
-              <div>${escapeHtml(user.name)}</div>
-              <div class="user-code">Room: ${escapeHtml(user.code)}</div>
-            `;
-            card.addEventListener('click', () => showPings(user.name));
-            userList.appendChild(card);
-          });
-        }
-      } catch (e) {
-        countElem.textContent = 'Failed to load users';
-        userList.innerHTML = `<div class="user-card"><em>Error loading users</em></div>`;
-        console.error('Failed to fetch users:', e);
-      }
-    }
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'close';
+  closeBtn.style.cssText = `
+    background: #0050ff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  `;
+  closeBtn.onclick = () => {
+    modal.style.display = 'none';
+  };
 
-    async function showPings(name) {
-      try {
-        const res = await fetch(`/api/pings?name=${encodeURIComponent(name)}`);
-        if (!res.ok) throw new Error('Failed to fetch pings');
-        const pings = await res.json();
+  modalContent.appendChild(closeBtn);
+  modal.appendChild(modalContent);
+  document.body.appendChild(modal);
 
-        let msg = `Ping history for ${name}:\n\n`;
-        const now = Date.now();
-        pings.forEach(ts => {
-          msg += `- ${formatAgo(now - ts)} ago\n`;
+  async function fetchUsers() {
+    try {
+      const res = await fetch('/api/list');
+      if (!res.ok) throw new Error('Network response not ok');
+      const users = await res.json();
+
+      countElem.textContent = `Current Count: ${users.length}`;
+      userList.innerHTML = '';
+
+      if (users.length === 0) {
+        userList.innerHTML = `<div class="user-card"><em>No users online</em></div>`;
+      } else {
+        users.forEach(user => {
+          const card = document.createElement('div');
+          card.className = 'user-card';
+          card.innerHTML = `
+            <div>${escapeHtml(user.name)}</div>
+            <div class="user-code">Room: ${escapeHtml(user.code)}</div>
+          `;
+          card.addEventListener('click', () => showHistory(user.name));
+          userList.appendChild(card);
         });
-
-        alert(msg);
-      } catch (err) {
-        alert('Error loading ping history');
-        console.error(err);
       }
+    } catch (e) {
+      countElem.textContent = 'Failed to load users';
+      userList.innerHTML = `<div class="user-card"><em>Error loading users</em></div>`;
+      console.error('Failed to fetch users:', e);
     }
+  }
 
-    function formatAgo(ms) {
-      const sec = Math.floor(ms / 1000);
-      if (sec < 60) return `${sec}s`;
-      const min = Math.floor(sec / 60);
-      if (min < 60) return `${min}m`;
-      const hr = Math.floor(min / 60);
-      if (hr < 24) return `${hr}h`;
-      const days = Math.floor(hr / 24);
-      return `${days}d`;
+  async function showHistory(name) {
+    try {
+      const res = await fetch(`/api/history?name=${encodeURIComponent(name)}`);
+      if (!res.ok) throw new Error('Failed to fetch history');
+      const data = await res.json();
+
+      const now = Date.now();
+      let content = `History for ${name}\n\n`;
+
+      content += `Current Room: ${escapeHtml(data.currentCode)}\n\n`;
+
+      if (data.codeChanges.length === 0) {
+        content += 'No room changes recorded.\n\n';
+      } else {
+        content += 'Room Changes:\n';
+        data.codeChanges.forEach(change => {
+          content += ` - ${formatAgo(now - change.timestamp)} ago: ${escapeHtml(change.from)} → ${escapeHtml(change.to)}\n`;
+        });
+        content += '\n';
+      }
+
+      if (data.pings.length === 0) {
+        content += 'No pings recorded.';
+      } else {
+        content += `Pings (${data.pings.length}):\n`;
+        data.pings.forEach(ts => {
+          content += ` - ${formatAgo(now - ts)} ago\n`;
+        });
+      }
+
+      modalContent.innerHTML = '';
+      modalContent.appendChild(closeBtn);
+      const pre = document.createElement('pre');
+      pre.style.cssText = 'margin:0; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap;';
+      pre.textContent = content;
+      modalContent.appendChild(pre);
+      modal.style.display = 'flex';
+    } catch (err) {
+      alert('Error loading player history');
+      console.error(err);
     }
+  }
 
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
+  function formatAgo(ms) {
+    const sec = Math.floor(ms / 1000);
+    if (sec < 60) return `${sec}s`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h`;
+    const days = Math.floor(hr / 24);
+    return `${days}d`;
+  }
 
-    fetchUsers();
-    setInterval(fetchUsers, 5000);
-  </script>
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  fetchUsers();
+  setInterval(fetchUsers, 5000);
+</script>
 </body>
 </html>
