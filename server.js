@@ -73,8 +73,8 @@ app.get('/api/history', (req, res) => {
 
 setInterval(() => {
   const now = Date.now();
-  activeList = activeList.filter(e => now - e.lastSeen < 3000);
-}, 10000);
+  activeList = activeList.filter(e => now - e.lastSeen < 11000);
+}, 1000);
 
 app.get('/api/list', (req, res) => {
   res.json(activeList.map(({ code, name }) => ({ code, name })));
