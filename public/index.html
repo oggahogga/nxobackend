@@ -9,8 +9,8 @@
 
   body {
     margin: 0;
-    background: #000814; /* deep black-blue */
-    color: #a8c0ff; /* soft light blue */
+    background: #000814;
+    color: #a8c0ff;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
       Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     display: flex;
@@ -25,7 +25,7 @@
     margin: 0;
     font-weight: 700;
     font-size: 3.2rem;
-    color: #0050ff; /* bright pure blue */
+    color: #0050ff;
     letter-spacing: -0.03em;
   }
 
@@ -54,7 +54,7 @@
   }
 
   .user-card {
-    background: #001141; /* solid deep blue */
+    background: #001141;
     border-radius: 10px;
     padding: 1rem 1.4rem;
     color: #d0dcff;
@@ -62,7 +62,7 @@
     text-align: center;
     font-weight: 600;
     font-size: 1.1rem;
-    cursor: default;
+    cursor: pointer;
     transition: background-color 0.2s ease;
   }
 
@@ -79,21 +79,17 @@
     letter-spacing: 0.03em;
   }
 
-  /* mobile tweaks */
   @media (max-width: 480px) {
     h1 {
       font-size: 2.4rem;
     }
-
     #count {
       font-size: 1rem;
     }
-
     #user-list {
       grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: 0.75rem;
     }
-
     .user-card {
       padding: 0.75rem 1rem;
       font-size: 1rem;
@@ -118,7 +114,6 @@
         const users = await res.json();
 
         countElem.textContent = `Current Count: ${users.length}`;
-
         userList.innerHTML = '';
 
         if (users.length === 0) {
@@ -131,6 +126,7 @@
               <div>${escapeHtml(user.name)}</div>
               <div class="user-code">Room: ${escapeHtml(user.code)}</div>
             `;
+            card.addEventListener('click', () => showPings(user.name));
             userList.appendChild(card);
           });
         }
@@ -139,6 +135,36 @@
         userList.innerHTML = `<div class="user-card"><em>Error loading users</em></div>`;
         console.error('Failed to fetch users:', e);
       }
+    }
+
+    async function showPings(name) {
+      try {
+        const res = await fetch(`/api/pings?name=${encodeURIComponent(name)}`);
+        if (!res.ok) throw new Error('Failed to fetch pings');
+        const pings = await res.json();
+
+        let msg = `Ping history for ${name}:\n\n`;
+        const now = Date.now();
+        pings.forEach(ts => {
+          msg += `- ${formatAgo(now - ts)} ago\n`;
+        });
+
+        alert(msg);
+      } catch (err) {
+        alert('Error loading ping history');
+        console.error(err);
+      }
+    }
+
+    function formatAgo(ms) {
+      const sec = Math.floor(ms / 1000);
+      if (sec < 60) return `${sec}s`;
+      const min = Math.floor(sec / 60);
+      if (min < 60) return `${min}m`;
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return `${hr}h`;
+      const days = Math.floor(hr / 24);
+      return `${days}d`;
     }
 
     function escapeHtml(text) {
